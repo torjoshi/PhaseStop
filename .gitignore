@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Results — keep directory structure but not generated data files
+results/*.json
+results/*.csv
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
