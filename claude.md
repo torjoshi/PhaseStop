@@ -82,7 +82,7 @@ into one trajectory that PhaseStop watches cleanly.
 |---|---|---|
 | Bayesian Change Point (BCP) | Activation (P1) | Distributional regime shift — scores left a new baseline |
 | Moving Average Slope (MA) | Growth (P2) | Mean shift sustained across windows — not a spike |
-| Mann-Kendall (MK) | Growth → Saturation (P2→P3) | Monotonic rank trend fading |
+| Mann-Kendall (MK) | Growth → Saturation (P2→P3) | Trend significance via p-value — p < 0.05 means trend is real; p >= 0.05 means no significant trend (plateau) |
 | Linear Regression (LR) | Saturation (P3) | Slope statistically indistinguishable from zero |
 | EWMA | Saturation (P3) | Smoothed value stopped moving — plateau is real |
 
@@ -173,12 +173,22 @@ All in config.py — no magic numbers anywhere else.
 | Parameter | Default | Why |
 |---|---|---|
 | Window k | 6 | Minimum for Mann-Kendall statistical power |
+| MK p-value | 0.05 | Standard significance threshold — trend is real if p < 0.05 |
 | LR p-value | 0.10 | Conservative — 0.05 misses gradual saturation |
 | EWMA alpha | 0.3 | Standard process-control default |
 | Rollback margin | 0.05 | 5% composite drop triggers REGRESSED |
 | Quality floor | 0.75 | Composite must exceed this to be eligible |
 | Storage format | "json" | Configurable — "csv" also supported |
 | Storage path | "results/run_history.json" | Configurable |
+
+**Why MK uses p-value not raw tau:**
+Raw tau has no universal threshold — its interpretation depends on
+window size and data characteristics. The p-value from the
+Mann-Kendall significance test is statistically principled:
+p < 0.05 = significant trend exists (IMPROVING or DECLINING).
+p >= 0.05 = no significant trend (STABILIZED).
+This eliminates the arbitrary tau > 0.2 heuristic and is
+consistent with how LR slope significance is handled.
 
 ---
 
@@ -203,7 +213,7 @@ class DetectorResult:
     name:       str
     signal:     Signal    # IMPROVING | STABILIZED | DECLINING | INSUFFICIENT
     confidence: float     # 0.0–1.0
-    metric:     str       # the key number e.g. "tau=0.34"
+    metric:     str       # the key number e.g. "p=0.031" for MK, "slope=+0.012" for LR
     note:       str       # plain English explanation
 
 # What the state machine returns per run
@@ -294,7 +304,9 @@ Verify: `python -c "from phasestop.config import WINDOW_K; print(WINDOW_K)"`
 **D1 — mann_kendall() only**
 Write file scaffold (imports, docstring) and mann_kendall() only.
 Explain: what Mann-Kendall detects, why it is non-parametric,
-what Kendall tau means, why tau > 0.2 means improving.
+what Kendall tau measures, why we use the p-value not raw tau,
+what p < 0.05 means (significant trend), what p >= 0.05 means
+(no significant trend — plateau candidate).
 Verify:
 ```python
 from phasestop.detectors import mann_kendall

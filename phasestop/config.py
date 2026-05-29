@@ -47,14 +47,15 @@ Below 0.75 the system is still in early exploration; trajectory analysis is not 
 Calibrated from RAGAS production-grade RAG baselines on BEIR benchmarks.
 """
 
-MK_TAU_THRESHOLD: float = 0.3
-"""Kendall tau boundary that separates an improving trend from a fading one.
+MK_P_THRESHOLD: float = 0.05
+"""Mann-Kendall p-value significance threshold (Section 3.3).
 
-tau > threshold  → IMPROVING (roughly 65% of pairs are concordant).
-|tau| <= threshold → STABILIZED (ordering too weak to call a trend).
-tau < -threshold → DECLINING.
-Set to 0.3 rather than the commonly cited 0.2 so that noisy plateau sequences
-(small alternating dips) are classified as STABILIZED rather than DECLINING.
+p < threshold  → significant trend exists; direction determined by tau sign
+                 (tau > 0 → IMPROVING, tau < 0 → DECLINING).
+p >= threshold → no statistically significant trend → STABILIZED.
+Standard significance level 0.05 is correct here because the p-value is
+statistically principled — unlike raw tau it accounts for window size.
+Consistent with the convention used by the LR slope test (LR_P_THRESHOLD).
 """
 
 STORAGE_FORMAT: str = "json"
