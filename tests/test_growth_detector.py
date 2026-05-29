@@ -1,11 +1,11 @@
 """
-Unit tests for phasestop.detectors — build stage T1.
+Unit tests for phasestop.growth_detector — build stage T1.
 Each test verifies one behavioural contract of the detector.
 """
 
 import pytest
 from phasestop.config import Signal
-from phasestop.detectors import mann_kendall
+from phasestop.growth_detector import mann_kendall
 
 
 # ---------------------------------------------------------------------------

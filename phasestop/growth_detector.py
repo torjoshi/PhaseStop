@@ -1,8 +1,10 @@
 """
-PhaseStop detectors — domain-blind trajectory analysis functions.
-Each function accepts a window of floats (oldest first, newest last)
-and returns a DetectorResult. No detector knows what the numbers mean.
-Build stages D1–D5 (see CLAUDE.md).
+PhaseStop — Growth phase detector (P2 → P3 boundary).
+Implements mann_kendall() and moving_avg() — build stages D1, D2 (see CLAUDE.md).
+
+S-curve position: active during Growth (P2). Detects when the upward trend
+is fading and the trajectory is approaching Saturation (P3). Also guards the
+backward path: if growth resumes from SATURATION_CHECK, the state reverts to P2.
 """
 
 import math
@@ -17,7 +19,7 @@ from phasestop.config import (
 
 def mann_kendall(window: list[float]) -> DetectorResult:
     """Mann-Kendall significance test for monotonic trend — Section 3.3.
-    
+
     S-curve position: active in the Growth phase (P2). A fading p-value
     (p rising above threshold) signals the transition to Saturation (P3).
     Also re-checked in SATURATION_CHECK: a newly significant p signals
@@ -28,7 +30,6 @@ def mann_kendall(window: list[float]) -> DetectorResult:
     to a Z score using the known variance formula, then derives a two-tailed
     p-value via the standard normal CDF.
 
-    
     p < MK_P_THRESHOLD  → significant trend; direction set by tau sign.
     p >= MK_P_THRESHOLD → no significant trend → plateau candidate.
 
@@ -98,3 +99,5 @@ def mann_kendall(window: list[float]) -> DetectorResult:
         metric=f"p={p_value:.3f}",
         note=note,
     )
+
+# moving_avg() — added in D2
