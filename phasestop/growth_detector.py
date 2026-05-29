@@ -1,16 +1,22 @@
 """
-PhaseStop — Growth phase detector (P2 → P3 boundary).
-Implements mann_kendall() and moving_avg() — build stages D1, D2 (see CLAUDE.md).
+PhaseStop — Growth phase detectors (P2).
 
-S-curve position: active during Growth (P2). Detects when the upward trend
-is fading and the trajectory is approaching Saturation (P3). Also guards the
-backward path: if growth resumes from SATURATION_CHECK, the state reverts to P2.
+moving_avg()  — Did scores shift to a higher level?
+    Compares the mean of the oldest half of the window to the newest half.
+    Used at the P1→P2 boundary (with BCP) to confirm Growth has started,
+    and as a guard inside Growth to catch reversals (REGRESSED).
+
+mann_kendall() — Is the upward trend still statistically significant?
+    Rank-based significance test (p-value). Used at the P2→P3 boundary
+    to detect when the trend is fading (move to SATURATION_CHECK),
+    and in SATURATION_CHECK to detect if growth has resumed (revert to P2).
 """
 
 import math
 
 from phasestop.config import (
     DetectorResult,
+    MA_SLOPE_THRESHOLD,
     MK_P_THRESHOLD,
     Signal,
     WINDOW_K,
@@ -100,4 +106,62 @@ def mann_kendall(window: list[float]) -> DetectorResult:
         note=note,
     )
 
-# moving_avg() — added in D2
+
+
+def moving_avg(window: list[float]) -> DetectorResult:
+    """Moving average mean-shift detector — Section 3.2.
+
+    S-curve position: active in Activation (P1) alongside bayesian_cp().
+    Both must agree before the state machine advances to Growth (P2).
+    Also guards the backward path in Growth: a DECLINING signal here
+    triggers an immediate REGRESSED decision.
+
+    Splits the window into two equal halves — prior (oldest) and recent
+    (newest) — and compares their means. A sustained shift of at least
+    MA_SLOPE_THRESHOLD confirms the trajectory is still moving, not spiking.
+
+    Returns:
+        IMPROVING    recent mean > prior mean by >= MA_SLOPE_THRESHOLD
+        DECLINING    recent mean < prior mean by >= MA_SLOPE_THRESHOLD
+        STABILIZED   |shift| < MA_SLOPE_THRESHOLD — means are approximately equal
+        INSUFFICIENT fewer than WINDOW_K points in window
+    """
+    if len(window) < WINDOW_K:
+        return DetectorResult(
+            name="moving_avg",
+            signal=Signal.INSUFFICIENT,
+            confidence=0.0,
+            metric=f"n={len(window)}",
+            note=f"Need {WINDOW_K} points, have {len(window)}",
+        )
+
+    half = len(window) // 2
+    prior = window[:half]
+    recent = window[half:]
+
+    prior_mean = sum(prior) / len(prior)
+    recent_mean = sum(recent) / len(recent)
+    shift = recent_mean - prior_mean
+
+    confidence = round(min(abs(shift) / MA_SLOPE_THRESHOLD, 1.0), 3)
+
+    if shift >= MA_SLOPE_THRESHOLD:
+        signal = Signal.IMPROVING
+        note = (f"recent mean {recent_mean:.3f} > prior mean {prior_mean:.3f} "
+                f"(shift={shift:+.3f} >= threshold {MA_SLOPE_THRESHOLD})")
+    elif shift <= -MA_SLOPE_THRESHOLD:
+        signal = Signal.DECLINING
+        note = (f"recent mean {recent_mean:.3f} < prior mean {prior_mean:.3f} "
+                f"(shift={shift:+.3f} <= -{MA_SLOPE_THRESHOLD})")
+    else:
+        signal = Signal.STABILIZED
+        note = (f"|shift| {abs(shift):.3f} < threshold {MA_SLOPE_THRESHOLD} "
+                f"— means approximately equal (prior={prior_mean:.3f}, recent={recent_mean:.3f})")
+
+    return DetectorResult(
+        name="moving_avg",
+        signal=signal,
+        confidence=confidence,
+        metric=f"shift={shift:+.3f}",
+        note=note,
+    )

@@ -58,6 +58,15 @@ statistically principled — unlike raw tau it accounts for window size.
 Consistent with the convention used by the LR slope test (LR_P_THRESHOLD).
 """
 
+MA_SLOPE_THRESHOLD: float = 0.01
+"""Minimum mean shift between the prior and recent half-windows for moving_avg() (Section 3.2).
+
+Compares mean(window[k//2:]) vs mean(window[:k//2]).
+A shift above 0.01 (1% of the composite scale) is treated as a sustained directional move.
+Too small (e.g. 0.001): noise triggers false IMPROVING/DECLINING signals.
+Too large (e.g. 0.05): real growth is missed and stays STABILIZED too long.
+"""
+
 STORAGE_FORMAT: str = "json"
 STORAGE_PATH: str = "results/run_history.json"
 
