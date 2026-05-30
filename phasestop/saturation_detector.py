@@ -29,9 +29,10 @@ def ewma_stable(window: list[float]) -> DetectorResult:
     (conjunction) before STABILIZED is returned by the state machine.
 
     Runs EWMA across the window with smoothing factor EWMA_ALPHA, then measures
-    the delta between the first and last smoothed values. A small delta means the
-    smoothed trajectory has stopped moving — genuine plateau. A large delta means
-    it is still climbing or falling.
+    the delta between the final smoothed value and the window mean. A small delta
+    means the smoothed trajectory is near the window's center of gravity — genuine
+    plateau. Using the window mean (not window[0]) as baseline avoids false IMPROVING
+    signals when the oldest score happens to be a low outlier.
 
     Returns:
         IMPROVING    delta > +EWMA_EPSILON  (smoothed value still rising)
@@ -48,25 +49,29 @@ def ewma_stable(window: list[float]) -> DetectorResult:
             note=f"Need {WINDOW_K} points, have {len(window)}",
         )
 
+    window_mean = sum(window) / len(window)
     ewma = window[0]
     for x in window[1:]:
         ewma = EWMA_ALPHA * x + (1 - EWMA_ALPHA) * ewma
 
-    delta = ewma - window[0]
+    # Delta is measured against the window mean, not window[0]. Using window[0]
+    # as baseline causes an outlier at index 0 to inflate delta and produce a
+    # false IMPROVING signal on an otherwise flat plateau.
+    delta = ewma - window_mean
     confidence = round(min(abs(delta) / EWMA_EPSILON, 1.0), 3)
 
     if delta > EWMA_EPSILON:
         signal = Signal.IMPROVING
-        note = (f"EWMA moved +{delta:.4f} from {window[0]:.3f} to {ewma:.3f} "
-                f"(> epsilon {EWMA_EPSILON}) — still rising")
+        note = (f"EWMA={ewma:.3f} > window mean {window_mean:.3f} "
+                f"(delta={delta:+.4f} > epsilon {EWMA_EPSILON}) — still rising")
     elif delta < -EWMA_EPSILON:
         signal = Signal.DECLINING
-        note = (f"EWMA moved {delta:.4f} from {window[0]:.3f} to {ewma:.3f} "
-                f"(< -epsilon {EWMA_EPSILON}) — falling")
+        note = (f"EWMA={ewma:.3f} < window mean {window_mean:.3f} "
+                f"(delta={delta:+.4f} < -epsilon {EWMA_EPSILON}) — falling")
     else:
         signal = Signal.STABILIZED
         note = (f"|EWMA delta| {abs(delta):.4f} <= epsilon {EWMA_EPSILON} "
-                f"— smoothed value flat at {ewma:.3f}")
+                f"— EWMA {ewma:.3f} near window mean {window_mean:.3f}")
 
     return DetectorResult(
         name="ewma_stable",
@@ -121,9 +126,11 @@ def linear_reg(window: list[float]) -> DetectorResult:
     residuals = [yi - (intercept + slope * xi) for xi, yi in zip(x, window)]
     ss_res = sum(r ** 2 for r in residuals)
 
-    # Standard error of the slope; guard against perfect fit (ss_res == 0)
+    # Guard against perfect fit (ss_res == 0).
+    # slope == 0 means all values are identical — definitively flat, route to STABILIZED.
+    # slope != 0 means a perfect non-zero line — definitively trending, p = 0.0.
     if ss_res == 0:
-        p_value = 0.0
+        p_value = 1.0 if slope == 0 else 0.0
     else:
         se_slope = math.sqrt(ss_res / (n - 2)) / math.sqrt(ss_xx)
         t_stat = slope / se_slope
