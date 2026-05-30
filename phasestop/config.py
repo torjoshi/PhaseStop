@@ -33,6 +33,15 @@ At 0.3 the newest score contributes 30% and accumulated history 70%.
 Too high (→ 1.0): no smoothing, EWMA tracks raw scores. Too low (→ 0.0): EWMA barely moves.
 """
 
+EWMA_EPSILON: float = 0.005
+"""Minimum EWMA delta (last minus first) to count as real movement (Section 3.4).
+
+If |ewma_last - ewma_first| < epsilon the smoothed value is considered flat → STABILIZED.
+At 0.005 (half a percent) genuine plateaus are caught while small noise-driven drifts are ignored.
+Too small (e.g. 0.001): EWMA never settles — false IMPROVING on flat trajectories.
+Too large (e.g. 0.05): slow genuine growth is missed and declared stable too early.
+"""
+
 ROLLBACK_MARGIN: float = 0.05
 """Composite drop below best_composite that triggers an immediate REGRESSED decision.
 
