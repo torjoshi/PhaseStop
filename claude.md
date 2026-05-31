@@ -245,19 +245,27 @@ PhaseStop/
 ├── requirements.txt
 ├── phasestop/
 │   ├── __init__.py
-│   ├── config.py       ← Session C1–C4
-│   ├── detectors.py    ← Session D1–D5
-│   ├── scorer.py       ← Session S1–S4
-│   └── synthetic.py    ← Session Y1–Y3
+│   ├── config.py               ← Session C1–C4
+│   ├── activation_detector.py  ← Session D5
+│   ├── growth_detector.py      ← Session D1–D2
+│   ├── saturation_detector.py  ← Session D3–D4
+│   ├── scorer.py               ← Session S1–S4
+│   └── synthetic.py            ← Session Y1–Y3
 ├── experiments/
 │   ├── __init__.py
 │   ├── study_a.py
 │   ├── study_b.py
 │   └── ablation.py
 ├── tests/
-│   ├── test_detectors.py   ← Session T1
-│   ├── test_scorer.py      ← Session T2
-│   └── test_synthetic.py   ← Session T3
+│   ├── test_activation_detector.py  ← Session T1
+│   ├── test_growth_detector.py      ← Session T1
+│   ├── test_saturation_detector.py  ← Session T1
+│   ├── test_scorer.py               ← Session T2
+│   └── test_synthetic.py            ← Session T3
+├── ui/
+│   ├── __init__.py
+│   ├── viewer.py     ← Session V1: trajectory review
+│   └── simulator.py  ← Session V2: value simulator
 ├── results/
 │   └── .gitkeep
 └── paper/
@@ -448,6 +456,95 @@ All tests pass.
 
 ---
 
+### ui/viewer.py — Trajectory Review UI
+
+Purpose: load a completed run history from `results/run_history.json`
+and let the user explore how PhaseStop progressed run by run — which
+phase it was in, what each detector reported, and when decisions fired.
+Read-only. No input. Depends on S4 (storage writer) being complete.
+
+Run with: `streamlit run ui/viewer.py`
+
+**V1-a — App shell + data loader**
+Create `ui/viewer.py` with Streamlit scaffold. Load
+`results/run_history.json`. Display raw run records as a table
+(run_id, composite, phase_state, decision columns).
+Explain: what Streamlit is, how `st.title / st.dataframe` work,
+how to load JSON into a pandas DataFrame.
+Verify: `streamlit run ui/viewer.py` — table appears in browser,
+one row per run.
+
+**V1-b — Composite trajectory chart**
+Add a line chart of composite score over run_id.
+Annotate phase state transitions with vertical dashed lines
+(ACTIVATION→GROWTH, GROWTH→SATURATION_CHECK).
+Color-code decision markers: ITERATE=gray, STABILIZED=green,
+REGRESSED=red.
+Explain: what `st.line_chart` vs `st.pyplot` offers, why we use
+matplotlib here for annotation control.
+Verify: chart appears with visible phase boundaries and colored
+decision points.
+
+**V1-c — Per-run detector breakdown**
+Add an expander for each run that shows a table of detector
+results: name, signal, confidence, metric, note.
+Signals color-coded: IMPROVING=blue, STABILIZED=green,
+DECLINING=red, INSUFFICIENT=gray.
+Explain: what `st.expander` does, how to render a colored
+DataFrame with `st.dataframe(styler)`.
+Verify: click any run row — detector table expands with
+correct signals and notes.
+
+---
+
+### ui/simulator.py — Value Simulator UI
+
+Purpose: let the user feed composite scores into PhaseStop
+interactively — either by typing them manually or selecting a
+synthetic trajectory — and watch the state machine respond in
+real time. Depends on scorer.py (S1–S4) and synthetic.py (Y1–Y3)
+being complete.
+
+Run with: `streamlit run ui/simulator.py`
+
+**V2-a — App shell + manual input**
+Create `ui/simulator.py` with Streamlit scaffold.
+Text area accepting comma-separated composite floats
+(e.g. `0.61, 0.70, 0.75, 0.79, 0.83, 0.85, 0.84, 0.84`).
+"Run simulation" button feeds each value into a fresh
+`PhaseStop()` instance via `add_run()` and collects results.
+Display results as a table (run_id, composite, phase_state,
+decision).
+Explain: how `st.text_area` and `st.button` work, how to
+instantiate PhaseStop and call add_run() in a loop.
+Verify: paste 8 values, click Run — table shows ITERATE/STABILIZED
+decisions matching expected state machine behaviour.
+
+**V2-b — Step-by-step run cards**
+Replace or augment the table with per-run cards showing:
+phase state badge (colored), decision badge (colored),
+and a compact detector signal row (icons or colored pills).
+Explain: how to use `st.columns` and `st.metric` to lay out
+per-run cards side by side.
+Verify: run a clean S-curve input — cards show phase advancing
+ACTIVATION → GROWTH → SATURATION_CHECK → STABILIZED with
+correct colors at each step.
+
+**V2-c — Synthetic trajectory selector**
+Add a selectbox listing all trajectory types from synthetic.py
+(clean_scurve, noisy_scurve, oscillating, premature_saturation,
+regression_post_saturation, fast_convergence, slow_convergence).
+Selecting one auto-populates the text area with that trajectory's
+composite scores. "Run simulation" button still works the same way.
+Add a seed input (default 42) for reproducibility.
+Explain: how synthetic.py generates trajectories, why exposing
+seed matters for reproducible demos and paper figures.
+Verify: select `regression_post_saturation` — text area fills
+with a plateau-then-drop sequence; simulation returns REGRESSED
+at the correct run.
+
+---
+
 ## Coding Standards
 
 1. **Explain before writing** — plain English first, code second.
@@ -458,6 +555,23 @@ All tests pass.
 6. **Reproducibility** — random operations take seed param, default 42.
 7. **No external ML deps** — scipy, numpy, statistics only.
 8. **Storage append-only** — never overwrite past records.
+
+### UI Standards (ui/ only)
+
+9. **Streamlit only** — no Flask, no Dash. `streamlit run ui/<file>.py` is
+   the single launch command for both UIs.
+10. **No business logic in ui/** — viewer.py and simulator.py only call
+    into `phasestop/` modules. No detector math, no state machine logic
+    lives in the UI layer.
+11. **Read-only data access in viewer.py** — never writes to
+    `results/run_history.json`. The viewer is a lens, not an editor.
+12. **Fresh PhaseStop instance per simulation** — simulator.py must
+    create a new `PhaseStop()` each time "Run simulation" is clicked.
+    Never reuse state across runs.
+13. **pandas for table display** — load JSON into a DataFrame before
+    passing to `st.dataframe`. Keeps display logic clean.
+14. **Add `streamlit` and `pandas` to requirements.txt** when V1-a
+    is implemented.
 
 ---
 
@@ -497,4 +611,4 @@ All tests pass.
 ---
 
 *PhaseStop — Rajesh Joshi — AI Cohort capstone*
-*Paper: v0.10 | CLAUDE.md: v4 | Build: C1 pending*
+*Paper: v0.10 | CLAUDE.md: v5 | Build: D5 complete, S1 next*
