@@ -250,6 +250,7 @@ PhaseStop/
 │   ├── growth_detector.py      ← Session D1–D2
 │   ├── saturation_detector.py  ← Session D3–D4
 │   ├── scorer.py               ← Session S1–S4
+│   ├── trace.py                ← Session R1
 │   └── synthetic.py            ← Session Y1–Y3
 ├── experiments/
 │   ├── __init__.py
@@ -261,6 +262,7 @@ PhaseStop/
 │   ├── test_growth_detector.py      ← Session T1
 │   ├── test_saturation_detector.py  ← Session T1
 │   ├── test_scorer.py               ← Session T2
+│   ├── test_integration.py          ← Session T2-int
 │   └── test_synthetic.py            ← Session T3
 ├── ui/
 │   ├── __init__.py
@@ -307,9 +309,13 @@ Verify: `python -c "from phasestop.config import WINDOW_K; print(WINDOW_K)"`
 
 ---
 
-### detectors.py
+### detector modules
 
-**D1 — mann_kendall() only**
+Note: detectors were split into three files by phase rather than kept in
+a single detectors.py. This reflects the phase-conditioned architecture
+and keeps each file focused on one phase.
+
+**D1 — mann_kendall() only** → `phasestop/growth_detector.py`
 Write file scaffold (imports, docstring) and mann_kendall() only.
 Explain: what Mann-Kendall detects, why it is non-parametric,
 what Kendall tau measures, why we use the p-value not raw tau,
@@ -317,51 +323,51 @@ what p < 0.05 means (significant trend), what p >= 0.05 means
 (no significant trend — plateau candidate).
 Verify:
 ```python
-from phasestop.detectors import mann_kendall
+from phasestop.growth_detector import mann_kendall
 print(mann_kendall([0.5, 0.6, 0.7, 0.8, 0.85, 0.88]))
 print(mann_kendall([0.84, 0.84, 0.83, 0.84, 0.84, 0.83]))
 ```
 
-**D2 — moving_avg()**
+**D2 — moving_avg()** → `phasestop/growth_detector.py`
 Add moving_avg() only.
 Explain: what window mean shift means, why two windows are
 compared, what slope_threshold controls.
 Verify:
 ```python
-from phasestop.detectors import moving_avg
+from phasestop.growth_detector import moving_avg
 print(moving_avg([0.60, 0.65, 0.70, 0.78, 0.83, 0.86]))
 print(moving_avg([0.83, 0.84, 0.83, 0.84, 0.83, 0.84]))
 ```
 
-**D3 — ewma_stable()**
+**D3 — ewma_stable()** → `phasestop/saturation_detector.py`
 Add ewma_stable() only.
 Explain: what exponential weighting does, what alpha controls,
 why EWMA is better than simple moving average for noisy data.
 Verify:
 ```python
-from phasestop.detectors import ewma_stable
+from phasestop.saturation_detector import ewma_stable
 print(ewma_stable([0.60, 0.65, 0.70, 0.78, 0.83, 0.86]))
 print(ewma_stable([0.84, 0.84, 0.83, 0.84, 0.84, 0.84]))
 ```
 
-**D4 — linear_reg()**
+**D4 — linear_reg()** → `phasestop/saturation_detector.py`
 Add linear_reg() only.
 Explain: what OLS slope means, what the t-statistic measures,
 why p > 0.10 means "slope is effectively zero".
 Verify:
 ```python
-from phasestop.detectors import linear_reg
+from phasestop.saturation_detector import linear_reg
 print(linear_reg([0.60, 0.65, 0.72, 0.79, 0.84, 0.88]))
 print(linear_reg([0.84, 0.83, 0.84, 0.83, 0.84, 0.84]))
 ```
 
-**D5 — bayesian_cp()**
+**D5 — bayesian_cp()** → `phasestop/activation_detector.py`
 Add bayesian_cp() only.
 Explain: what a regime change means, what the stability ratio
 measures, why this detector fires first (at activation).
 Verify:
 ```python
-from phasestop.detectors import bayesian_cp
+from phasestop.activation_detector import bayesian_cp
 print(bayesian_cp([0.50, 0.50, 0.51, 0.72, 0.79, 0.83]))
 print(bayesian_cp([0.83, 0.84, 0.83, 0.84, 0.83, 0.84]))
 ```
@@ -402,6 +408,45 @@ what backward regression means, how the storage writer works
 Verify: run a full clean S-curve sequence end to end.
 Confirm STABILIZED is returned. Open run_history.json and
 read the records.
+
+---
+
+### trace.py
+
+**R1 — trace() and print_trace()**
+Write `phasestop/trace.py` with `TracePoint` dataclass, `trace()`,
+and `print_trace()`.
+
+`trace(history)` slides a WINDOW_K window across a full composite
+history and runs ALL five detectors at every position — regardless of
+which phase the state machine would have been in. Returns one
+TracePoint per position (positions before WINDOW_K fills return
+INSUFFICIENT for all detectors).
+
+This is a diagnostic utility only. No state machine, no decisions,
+no storage. Use it to see what each detector was signalling throughout
+a full trajectory — useful for debugging phase boundaries and
+generating paper figures.
+
+`TracePoint` fields: `position` (1-indexed run number the window ends
+at), `window` (the raw scores), `detector_results` (all five).
+
+`print_trace(points)` formats results as a columnar table: position,
+composite (last value in window), then one abbreviated signal column
+per detector in phase order (BCP → MK → MA → EWMA → LR).
+
+Explain: why the state machine only runs phase-assigned detectors
+but the trace runs all five; what "detector landscape" means;
+how position aligns with run_id.
+Verify:
+```python
+from phasestop.trace import trace, print_trace
+history = [0.76, 0.79, 0.82, 0.85, 0.87, 0.88, 0.88, 0.88, 0.88, 0.88]
+print_trace(trace(history))
+```
+Runs 1–5 must show INSF for all detectors.
+Run 6 must show IMP for BCP and MA.
+Run 10 must show STAB for all five detectors.
 
 ---
 
@@ -448,6 +493,20 @@ Three scenarios: clean S-curve reaches STABILIZED, oscillating
 stays ITERATE, regression returns REGRESSED.
 Verify: `pytest tests/test_scorer.py -v`
 All tests pass.
+
+**T2-int — test_integration.py**
+End-to-end pipeline tests using the canonical trajectory
+[0.76, 0.79, 0.82, 0.85, 0.87, 0.88, 0.88, 0.88, 0.88, 0.88].
+Four categories:
+1. Exact phase boundary run numbers (runs 1–6 = ACTIVATION,
+   runs 7–9 = GROWTH, run 10 = SATURATION_CHECK → STABILIZED)
+2. Detector identity per phase (correct detectors called per state)
+3. Signal propagation (valid signals, confidences in range,
+   INSUFFICIENT for short windows, expected signals at key runs)
+4. Storage round-trip (all fields survive serialization, composite
+   values preserved, sequential run_ids, ISO timestamps)
+Verify: `pytest tests/test_integration.py -v`
+All 19 tests pass.
 
 **T3 — test_synthetic.py**
 Verify each trajectory type has correct phase boundaries.
@@ -611,4 +670,4 @@ at the correct run.
 ---
 
 *PhaseStop — Rajesh Joshi — AI Cohort capstone*
-*Paper: v0.10 | CLAUDE.md: v5 | Build: D5 complete, S1 next*
+*Paper: v0.10 | CLAUDE.md: v6 | Build: C1–C4, D1–D5, S1–S4, R1, T1–T2-int complete | Y1 next*
