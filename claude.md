@@ -243,15 +243,20 @@ PhaseStop/
 ├── CLAUDE.md
 ├── README.md
 ├── requirements.txt
-├── phasestop/
+│
+├── phasestop/                   ← CORE — deployable library
+│   ├── __init__.py              ← exports PhaseStop, Decision, Signal, DetectorResult
+│   ├── config.py                ← Session C1–C4
+│   ├── activation_detector.py   ← Session D5
+│   ├── growth_detector.py       ← Session D1–D2
+│   ├── saturation_detector.py   ← Session D3–D4
+│   └── scorer.py                ← Session S1–S4
+│
+├── tools/                       ← HELPERS — research utilities, depend on core
 │   ├── __init__.py
-│   ├── config.py               ← Session C1–C4
-│   ├── activation_detector.py  ← Session D5
-│   ├── growth_detector.py      ← Session D1–D2
-│   ├── saturation_detector.py  ← Session D3–D4
-│   ├── scorer.py               ← Session S1–S4
-│   ├── trace.py                ← Session R1
-│   └── synthetic.py            ← Session Y1–Y3
+│   ├── trace.py                 ← Session R1: retrospective detector landscape
+│   └── synthetic.py             ← Session Y1–Y3: trajectory generator
+│
 ├── experiments/
 │   ├── __init__.py
 │   ├── study_a.py
@@ -273,6 +278,10 @@ PhaseStop/
 └── paper/
     └── EvalReady_paper_outline_v10.pdf
 ```
+
+**Dependency rule:** `phasestop/` (core) has no imports from `tools/`. `tools/`
+imports from `phasestop.*`. Tests and UI may import from either. Core can be
+packaged and deployed independently.
 
 ---
 
@@ -440,7 +449,7 @@ but the trace runs all five; what "detector landscape" means;
 how position aligns with run_id.
 Verify:
 ```python
-from phasestop.trace import trace, print_trace
+from tools.trace import trace, print_trace
 history = [0.76, 0.79, 0.82, 0.85, 0.87, 0.88, 0.88, 0.88, 0.88, 0.88]
 print_trace(trace(history))
 ```
@@ -456,24 +465,45 @@ Run 10 must show STAB for all five detectors.
 Write the base trajectory generator class and clean_scurve only.
 Explain: what a sigmoid function produces, how phase boundaries
 are embedded as ground truth, why seed=42 default.
-Verify: generate 3 clean_scurve trajectories and plot/print them.
-Confirm they look like S-curves.
+Verify:
+```python
+from tools.synthetic import TrajectoryGenerator
+gen = TrajectoryGenerator(seed=42)
+for n in [10, 20, 30]:
+    traj = gen.clean_scurve(n_runs=n)
+    print(n, traj.phase_boundaries, traj.composites[:3], '...', traj.composites[-3:])
+```
+Confirm small values at start (~0.76), rising middle, plateau near 0.92 at end.
 
 **Y2 — noisy_scurve, oscillating, premature_saturation**
-Add three more trajectory types.
+Add three more trajectory types to `tools/synthetic.py`.
 Explain: what Gaussian noise does to a trajectory, what
 oscillation looks like statistically, what premature saturation
 means for the state machine.
-Verify: generate one of each and print. Confirm they are
-visually distinct from clean_scurve.
+Verify:
+```python
+from tools.synthetic import TrajectoryGenerator
+gen = TrajectoryGenerator(seed=42)
+print(gen.noisy_scurve().composites)
+print(gen.oscillating().composites)
+print(gen.premature_saturation().composites)
+```
+Confirm they are visually distinct from clean_scurve.
 
 **Y3 — regression_post_saturation, fast_convergence,
 slow_convergence**
-Add the final three trajectory types.
+Add the final three trajectory types to `tools/synthetic.py`.
 Explain: why regression after saturation is a critical test
 case, what fast/slow convergence tests about window size.
-Verify: generate one of each. Confirm regression trajectory
-shows a clear drop after plateau.
+Verify:
+```python
+from tools.synthetic import TrajectoryGenerator
+gen = TrajectoryGenerator(seed=42)
+print(gen.regression_post_saturation().composites)
+print(gen.fast_convergence().composites)
+print(gen.slow_convergence().composites)
+```
+Confirm regression trajectory shows a clear drop after plateau.
 
 ---
 
@@ -670,4 +700,5 @@ at the correct run.
 ---
 
 *PhaseStop — Rajesh Joshi — AI Cohort capstone*
-*Paper: v0.10 | CLAUDE.md: v6 | Build: C1–C4, D1–D5, S1–S4, R1, T1–T2-int complete | Y1 next*
+*Paper: v0.10 | CLAUDE.md: v7 | Build: C1–C4, D1–D5, S1–S4, R1, Y1, T1–T2-int complete | Y2 next*
+*Structure: phasestop/ = core (deployable) | tools/ = helpers (trace, synthetic)*
