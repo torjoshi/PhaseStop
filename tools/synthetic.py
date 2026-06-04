@@ -84,32 +84,33 @@ class TrajectoryGenerator:
         self._seed = seed
 
     def clean_scurve(self, n_runs: int = 20) -> Trajectory:
-        """Clean sigmoid S-curve with no noise — Section 5.1.
+        """Clean S-curve: sigmoid rise then hard plateau — Section 5.1.
 
-        Designed to drive the state machine through all three phases:
-          Activation  first ~30% of runs — gentle rise from floor
-          Growth      middle ~40% of runs — steep sigmoid rise
-          Saturation  final ~30% of runs — plateau near ceiling
+        A pure sigmoid asymptotically approaches ceiling but never truly
+        plateaus within a practical run count, so MK always sees a small
+        positive trend and GROWTH never transitions to SATURATION_CHECK.
+        The hard tail (_TAIL flat runs at 0.92) gives LR and EWMA a clean
+        window of zero-slope data to confirm saturation.
 
         Args:
-            n_runs: Number of simulated runs to generate (default 20).
+            n_runs: Total simulated runs including the hard tail (default 20).
 
         Returns:
             Trajectory with composites and approximate phase boundaries.
         """
-        scores = _scurve_scores(
-            n_runs=n_runs,
+        _TAIL = 8  # must be > WINDOW_K so LR+EWMA see a fully flat window
+        rise_runs = n_runs - _TAIL
+        rise = _scurve_scores(
+            n_runs=rise_runs,
             floor_score=0.76,
             ceiling_score=0.92,
             steepness=0.5,
             midpoint_frac=0.40,
         )
+        scores = rise + [0.92] * _TAIL
 
-        # Approximate phase boundary run numbers derived from sigmoid shape.
-        # T3 (test_synthetic.py) verifies these align with actual state machine
-        # transitions when the trajectory is fed into PhaseStop.
-        activation_end = max(1, round(n_runs * 0.30))
-        growth_end = max(activation_end + 1, round(n_runs * 0.70))
+        activation_end = max(1, round(rise_runs * 0.30))
+        growth_end = rise_runs  # plateau begins immediately after sigmoid rise
 
         return Trajectory(
             composites=scores,

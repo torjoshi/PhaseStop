@@ -6,10 +6,7 @@ the state machine produces the expected decision pattern. Ground truth
 was verified empirically by running all trajectories before writing
 assertions.
 
-Key n_runs notes:
-  clean_scurve n=35: pure sigmoid needs 35 runs for the tail to flatten enough
-                     for LR + EWMA to both confirm saturation.
-  All other trajectories use their default n_runs.
+All trajectories use their default n_runs.
 """
 
 import pytest
@@ -40,15 +37,15 @@ def _run(traj, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_clean_scurve_reaches_stabilized(gen, tmp_path):
-    """n_runs=35 ensures the sigmoid tail is flat enough for LR+EWMA confirmation."""
-    traj = gen.clean_scurve(n_runs=35)
+    """Hard plateau tail gives LR+EWMA a flat window — STABILIZED fires at default n_runs=20."""
+    traj = gen.clean_scurve()
     _, decisions = _run(traj, tmp_path)
     assert Decision.STABILIZED in decisions
 
 
 def test_clean_scurve_no_regressed(gen, tmp_path):
     """A monotonically rising S-curve must never trigger the rollback margin."""
-    traj = gen.clean_scurve(n_runs=35)
+    traj = gen.clean_scurve()
     _, decisions = _run(traj, tmp_path)
     assert Decision.REGRESSED not in decisions
 
