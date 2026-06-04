@@ -23,3 +23,6 @@ results/*.csv
 # IDE
 .vscode/
 .idea/
+
+# Paper — not tracked in this repo
+paper/
