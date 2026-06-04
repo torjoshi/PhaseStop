@@ -271,8 +271,8 @@ PhaseStop/
 │   └── test_synthetic.py            ← Session T3
 ├── ui/
 │   ├── __init__.py
-│   ├── viewer.py     ← Session V1: trajectory review
-│   └── simulator.py  ← Session V2: value simulator
+│   ├── viewer.py     ← Session V1-a–V1-c: trajectory review (complete)
+│   └── simulator.py  ← Session V2-a–V2-c: value simulator (complete)
 ├── results/
 │   └── .gitkeep
 └── paper/
@@ -552,7 +552,7 @@ and let the user explore how PhaseStop progressed run by run — which
 phase it was in, what each detector reported, and when decisions fired.
 Read-only. No input. Depends on S4 (storage writer) being complete.
 
-Run with: `streamlit run ui/viewer.py`
+Run with: `python -m streamlit run ui/viewer.py`
 
 **V1-a — App shell + data loader**
 Create `ui/viewer.py` with Streamlit scaffold. Load
@@ -560,7 +560,7 @@ Create `ui/viewer.py` with Streamlit scaffold. Load
 (run_id, composite, phase_state, decision columns).
 Explain: what Streamlit is, how `st.title / st.dataframe` work,
 how to load JSON into a pandas DataFrame.
-Verify: `streamlit run ui/viewer.py` — table appears in browser,
+Verify: `python -m streamlit run ui/viewer.py` — table appears in browser,
 one row per run.
 
 **V1-b — Composite trajectory chart**
@@ -594,7 +594,7 @@ synthetic trajectory — and watch the state machine respond in
 real time. Depends on scorer.py (S1–S4) and synthetic.py (Y1–Y3)
 being complete.
 
-Run with: `streamlit run ui/simulator.py`
+Run with: `python -m streamlit run ui/simulator.py`
 
 **V2-a — App shell + manual input**
 Create `ui/simulator.py` with Streamlit scaffold.
@@ -647,8 +647,10 @@ at the correct run.
 
 ### UI Standards (ui/ only)
 
-9. **Streamlit only** — no Flask, no Dash. `streamlit run ui/<file>.py` is
-   the single launch command for both UIs.
+9. **Streamlit only** — no Flask, no Dash. Launch command:
+   `python -m streamlit run ui/<file>.py`
+   Use `python -m streamlit` (not bare `streamlit`) — pyenv installs the binary
+   under the version-specific bin directory which may not be on $PATH.
 10. **No business logic in ui/** — viewer.py and simulator.py only call
     into `phasestop/` modules. No detector math, no state machine logic
     lives in the UI layer.
@@ -700,5 +702,9 @@ at the correct run.
 ---
 
 *PhaseStop — Rajesh Joshi — AI Cohort capstone*
-*Paper: v0.10 | CLAUDE.md: v7 | Build: C1–C4, D1–D5, S1–S4, R1, Y1, T1–T2-int complete | Y2 next*
-*Structure: phasestop/ = core (deployable) | tools/ = helpers (trace, synthetic)*
+*PhaseStop build complete.*
+*Paper: v0.10 | CLAUDE.md: v10 | Build: C1–C4, D1–D5, S1–S4, R1, Y1–Y3, T1–T3, V1-a–V1-c, V2-a–V2-c — all complete*
+*Structure: phasestop/ = core (deployable) | tools/ = helpers (trace, synthetic) | ui/ = Streamlit apps*
+*Tests: 97 passing*
+*Viewer:    python -m streamlit run ui/viewer.py*
+*Simulator: python -m streamlit run ui/simulator.py*
