@@ -1,6 +1,11 @@
 # PhaseStop
 
-PhaseStop is a small Python library for deciding when an iterative system has likely stopped improving.
+Every iterative AI optimization process produces a recurring
+decision after each run: has the system improved enough to keep
+going, or is further iteration wasting effort? 
+
+PhaseStop is Phase-Conditioned Detector Orchestration
+for Iterative AI System Optimization. It is a Python library for deciding when an iterative system has likely stopped improving.
 
 You feed it one composite score per run. It tracks the recent trajectory, applies phase-specific detectors, and returns one of three decisions:
 
