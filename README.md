@@ -15,6 +15,13 @@ You feed it one composite score per run. It tracks the recent trajectory, applie
 
 The repository also includes synthetic trajectory generators, experiment scripts, tests, and two Streamlit apps for simulation and history review.
 
+## Paper
+
+**PhaseStop: Phase-Conditioned Detector Orchestration for Iterative AI System Optimization**
+Rajesh Joshi — AI Cohort Capstone, 2026
+
+Published on Zenodo: [https://zenodo.org/records/20560596](https://zenodo.org/records/20560596)
+
 ## What It Does
 
 PhaseStop models optimization as a three-phase process:
@@ -224,4 +231,9 @@ This is useful for understanding what each detector is signaling across a full t
 
 ## License / Status
 
-No license file is present in this repository right now, so treat the project as unlicensed unless the owner adds one.
+Paper published at [https://zenodo.org/records/20560596](https://zenodo.org/records/20560596).
+
+**Non-commercial use** (research, academic, personal) is freely permitted with attribution.
+**Commercial use** requires a separate written agreement — contact torjoshi@gmail.com.
+
+See [LICENSE](LICENSE) for full terms.

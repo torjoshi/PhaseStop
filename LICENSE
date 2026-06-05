@@ -1,0 +1,50 @@
+Copyright (c) 2026 Rajesh Joshi. All rights reserved.
+
+---
+
+NON-COMMERCIAL LICENSE
+
+This software and associated documentation files (the "Software") are
+licensed under the following terms:
+
+1. PERMITTED USE (NON-COMMERCIAL)
+
+   You are free to:
+   - Use, copy, and modify the Software for personal, academic, or
+     research purposes.
+   - Distribute the Software or derivative works for non-commercial
+     purposes only.
+
+   Under the following conditions:
+   - Attribution: You must give appropriate credit to the original
+     author (Rajesh Joshi), provide a link to the source repository,
+     and indicate if changes were made.
+   - Non-Commercial: You may not use the Software, or any derivative
+     work, for commercial purposes — including selling, licensing,
+     or incorporating it into a commercial product or service —
+     without a separate written agreement from the author.
+
+2. COMMERCIAL LICENSING
+
+   Commercial use requires a separate license. To inquire about
+   commercial licensing, contact:
+
+       Rajesh Joshi
+       torjoshi@gmail.com
+
+3. CITATION
+
+   If you use this Software in academic work, please cite:
+
+       Joshi, R. (2026). PhaseStop: Phase-Conditioned Detector
+       Orchestration for Iterative AI System Optimization.
+       Zenodo. https://zenodo.org/records/20560596
+
+4. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+   CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE
+   SOFTWARE.
